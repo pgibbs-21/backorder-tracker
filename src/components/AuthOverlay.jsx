@@ -28,33 +28,15 @@ export default function AuthOverlay() {
     }
   }
 
-  const handleSignUp = async () => {
-    if (!email || !password) { setError('Enter email and password first.'); return }
-    clear()
-    setBusy(true)
-    setStatus({ text: 'Creating account...', type: 'pending' })
-    try {
-      const { data, error: err } = await supabase.auth.signUp({ email, password })
-      if (err) { setError(err.message); setStatus({ text: '', type: '' }) }
-      else if (data?.session) setStatus({ text: 'Account created and signed in. Loading board...', type: 'success' })
-      else setStatus({ text: 'Account created. Check your email for confirmation, then sign in.', type: 'info' })
-    } catch (err) {
-      setError(err?.message || 'Create account failed.')
-      setStatus({ text: '', type: '' })
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
+return (
     <div className="auth-overlay">
       <div className="auth-card">
         <div className="logo" style={{ marginBottom: 'var(--space-4)' }}>
           <LogoSvg />
           <span className="logo-text">Backorder<span>Track</span></span>
         </div>
-        <h1 className="auth-title">Team sign in</h1>
-        <p className="auth-copy">Use your team email and password to access the live shared board.</p>
+        <h1 className="auth-title">Sign in</h1>
+        <p className="auth-copy">This app is invite only. If you don't have access, contact the boss to get set up.</p>
         <form className="auth-stack" onSubmit={handleSignIn}>
           <input
             className="form-input"
@@ -73,14 +55,11 @@ export default function AuthOverlay() {
             onChange={e => setPassword(e.target.value)}
             required
           />
-          <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-            <button type="submit" className="btn-save" disabled={busy}>Sign in</button>
-            <button type="button" className="btn-cancel" onClick={handleSignUp} disabled={busy}>Create account</button>
-          </div>
+          <button type="submit" className="btn-save" disabled={busy}>Sign in</button>
           {error && <div className="auth-error">{error}</div>}
           {status.text && <div className={`auth-status ${status.type}`}>{status.text}</div>}
         </form>
-        <p className="auth-note">After sign-in, all users connected to the same Supabase table will see the same board updates in real time.</p>
+        <p className="auth-note">Need access? Reach out to get an invite sent to your work email.</p>
       </div>
     </div>
   )
