@@ -1,6 +1,6 @@
 import Column from './Column'
 
-export default function Board({ columns, orders, onOpenNew, onOpenEdit, onMove, onDragStart, onDrop }) {
+export default function Board({ columns, cards, onOpenNew, onOpenEdit, onMove, onDragStart, onDrop }) {
   return (
     <main className="board-container">
       <div className="board">
@@ -9,7 +9,7 @@ export default function Board({ columns, orders, onOpenNew, onOpenEdit, onMove, 
             key={col.id}
             col={col}
             columns={columns}
-            orders={orders.filter(o => o.col === col.id)}
+            cards={cards.filter(c => c.col === col.id)}
             onOpenNew={onOpenNew}
             onOpenEdit={onOpenEdit}
             onMove={onMove}

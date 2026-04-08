@@ -2,34 +2,28 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase, supabaseEnabled } from './lib/supabase'
 import AuthOverlay from './components/AuthOverlay'
 import Header from './components/Header'
+import BoardList from './components/BoardList'
 import Board from './components/Board'
-import OrderModal from './components/OrderModal'
+import CardModal from './components/CardModal'
 
 export const COLUMNS = [
-  { id: 'intake',    title: 'Need + Buyer Check',    step: 'Steps 1–2', icon: 'search',         desc: 'Customer need logged and buyers checked' },
-  { id: 'confirm',   title: 'Relay & Confirm',       step: 'Step 3',    icon: 'check-circle',   desc: 'Confirm customer still wants it' },
-  { id: 'backorder', title: 'Backordered / Waiting', step: 'Steps 4–5', icon: 'package-search', desc: 'Placed on backorder and waiting on ETA' },
-  { id: 'shipped',   title: 'Shipped!',              step: 'Step 6',    icon: 'truck',           desc: 'Order out the door 🎉' },
+  { id: 'todo',        title: 'To Do',       icon: 'circle',       desc: 'Not started yet' },
+  { id: 'in_progress', title: 'In Progress',  icon: 'zap',          desc: 'Currently working on' },
+  { id: 'review',      title: 'Review',       icon: 'eye',          desc: 'Ready for review' },
+  { id: 'done',        title: 'Done',         icon: 'check-circle', desc: 'Completed' },
 ]
 
 function uid() { return 'id_' + Math.random().toString(36).slice(2, 9) }
 
-const DEMO_ORDERS = [
-  { id: uid(), col: 'intake',    customer: 'Alex Carter',  item: 'Shimano Dura-Ace R9200 Crankset',  priority: 'high',   eta: '',         notes: 'Customer need captured. Check with buyer ASAP.' },
-  { id: uid(), col: 'intake',    customer: 'Sam Nguyen',   item: 'Fox 34 Step-Cast Fork 120mm',      priority: 'medium', eta: '~3 weeks', notes: 'Customer need logged. Reached out to Fox rep.' },
-  { id: uid(), col: 'confirm',   customer: 'Morgan Lee',   item: 'SRAM Force AXS Rear Derailleur',   priority: 'medium', eta: '2 weeks',  notes: 'Emailed customer 4/7.' },
-  { id: uid(), col: 'backorder', customer: 'Jordan Wills', item: 'Zipp 303 S Disc Wheelset',         priority: 'high',   eta: 'April 18', notes: 'BO# 449832 — placed on backorder, waiting for ship confirmation.' },
-  { id: uid(), col: 'backorder', customer: 'Riley Tran',   item: 'Wahoo KICKR v6 Trainer',           priority: 'low',    eta: 'TBD',      notes: 'Out of stock industry-wide. Waiting on ETA update.' },
-  { id: uid(), col: 'shipped',   customer: 'Casey Park',   item: 'Garmin Edge 1040 Solar',           priority: 'medium', eta: '',         notes: 'Shipped 4/6. Tracking sent.' },
-]
-
 export default function App() {
-  const [orders, setOrders] = useState(DEMO_ORDERS)
   const [currentUser, setCurrentUser] = useState(null)
   const [connectionStatus, setConnectionStatus] = useState('local')
+  const [boards, setBoards] = useState([])
+  const [selectedBoard, setSelectedBoard] = useState(null)
+  const [cards, setCards] = useState([])
   const [modalOpen, setModalOpen] = useState(false)
-  const [editingOrder, setEditingOrder] = useState(null)
-  const [editingDefaultCol, setEditingDefaultCol] = useState('intake')
+  const [editingCard, setEditingCard] = useState(null)
+  const [editingDefaultCol, setEditingDefaultCol] = useState('todo')
   const [theme, setTheme] = useState(() =>
     matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   )
@@ -40,48 +34,130 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
 
-  const loadOrders = useCallback(async () => {
+  // ── Boards ──
+  const loadBoards = useCallback(async () => {
     if (!supabaseEnabled || !currentUser) return
     const { data, error } = await supabase
-      .from('backorder_orders')
+      .from('boards')
       .select('*')
       .eq('user_id', currentUser.id)
       .order('created_at', { ascending: true })
+    if (!error && data) setBoards(data)
+  }, [currentUser])
+
+  const createBoard = async (name) => {
+    if (!supabaseEnabled || !currentUser) {
+      const board = { id: uid(), name, user_id: 'local', created_at: new Date().toISOString() }
+      setBoards(prev => [...prev, board])
+      return board
+    }
+    const { data, error } = await supabase
+      .from('boards')
+      .insert({ name, user_id: currentUser.id })
+      .select()
+      .single()
+    if (!error && data) setBoards(prev => [...prev, data])
+    return data
+  }
+
+  const deleteBoard = async (id) => {
+    setBoards(prev => prev.filter(b => b.id !== id))
+    if (selectedBoard?.id === id) { setSelectedBoard(null); setCards([]) }
+    if (!supabaseEnabled || !currentUser) return
+    await supabase.from('boards').delete().eq('id', id).eq('user_id', currentUser.id)
+  }
+
+  const renameBoard = async (id, name) => {
+    setBoards(prev => prev.map(b => b.id === id ? { ...b, name } : b))
+    if (selectedBoard?.id === id) setSelectedBoard(prev => ({ ...prev, name }))
+    if (!supabaseEnabled || !currentUser) return
+    await supabase.from('boards').update({ name }).eq('id', id).eq('user_id', currentUser.id)
+  }
+
+  // ── Cards ──
+  const loadCards = useCallback(async (boardId) => {
+    if (!supabaseEnabled || !currentUser) return
+    const { data, error } = await supabase
+      .from('cards')
+      .select('*')
+      .eq('board_id', boardId)
+      .order('created_at', { ascending: true })
     if (!error && data) {
-      setOrders(data.map(row => ({
-        id: row.id, col: row.col, customer: row.customer, item: row.item,
-        priority: row.priority, eta: row.eta || '', notes: row.notes || '',
+      setCards(data.map(row => ({
+        id: row.id, col: row.col, title: row.title,
+        description: row.description || '', priority: row.priority,
+        due_date: row.due_date || '', board_id: row.board_id,
       })))
     }
   }, [currentUser])
 
-  const subscribeRealtime = useCallback(() => {
+  const subscribeRealtime = useCallback((boardId) => {
     if (!supabaseEnabled || !currentUser) return
     if (realtimeRef.current) supabase.removeChannel(realtimeRef.current)
     realtimeRef.current = supabase
-      .channel('board-orders')
+      .channel(`board-${boardId}`)
       .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'backorder_orders',
-        filter: `user_id=eq.${currentUser.id}`,
-      }, () => loadOrders())
+        event: '*', schema: 'public', table: 'cards',
+        filter: `board_id=eq.${boardId}`,
+      }, () => loadCards(boardId))
       .subscribe()
-  }, [currentUser, loadOrders])
+  }, [currentUser, loadCards])
 
+  const selectBoard = (board) => {
+    setSelectedBoard(board)
+    setCards([])
+    loadCards(board.id)
+    subscribeRealtime(board.id)
+  }
+
+  const createCard = async (data) => {
+    if (!supabaseEnabled || !currentUser) {
+      setCards(prev => [...prev, { id: uid(), col: editingDefaultCol, board_id: selectedBoard.id, ...data }])
+      return
+    }
+    await supabase.from('cards').insert({
+      board_id: selectedBoard.id,
+      col: editingDefaultCol,
+      title: data.title,
+      description: data.description || null,
+      priority: data.priority,
+      due_date: data.due_date || null,
+      user_id: currentUser.id,
+    })
+  }
+
+  const updateCard = async (id, patch) => {
+    setCards(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c))
+    if (!supabaseEnabled || !currentUser) return
+    await supabase.from('cards').update({
+      ...patch,
+      due_date: patch.due_date === '' ? null : patch.due_date,
+      description: patch.description === '' ? null : patch.description,
+    }).eq('id', id).eq('user_id', currentUser.id)
+  }
+
+  const deleteCard = async (id) => {
+    setCards(prev => prev.filter(c => c.id !== id))
+    if (!supabaseEnabled || !currentUser) return
+    await supabase.from('cards').delete().eq('id', id).eq('user_id', currentUser.id)
+  }
+
+  // ── Auth ──
   useEffect(() => {
     if (!supabaseEnabled) { setConnectionStatus('local'); return }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       const user = session?.user || null
       setCurrentUser(user)
-      if (user) { setConnectionStatus('live'); subscribeRealtime(); loadOrders() }
+      if (user) { setConnectionStatus('live'); loadBoards() }
       else setConnectionStatus('auth')
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const user = session?.user || null
       setCurrentUser(user)
-      if (user) { setOrders([]); setConnectionStatus('live'); subscribeRealtime(); loadOrders() }
-      else setConnectionStatus('auth')
+      if (user) { setBoards([]); setConnectionStatus('live'); loadBoards() }
+      else { setConnectionStatus('auth'); setBoards([]); setSelectedBoard(null); setCards([]) }
     })
 
     return () => {
@@ -90,80 +166,45 @@ export default function App() {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const createOrder = async (data) => {
-    if (!supabaseEnabled || !currentUser) {
-      setOrders(prev => [...prev, { id: uid(), col: editingDefaultCol, ...data }])
-      return
-    }
-    await supabase.from('backorder_orders').insert({
-      col: editingDefaultCol,
-      customer: data.customer,
-      item: data.item,
-      priority: data.priority,
-      eta: data.eta || null,
-      notes: data.notes || null,
-      user_id: currentUser.id,
-    })
+  const handleSignOut = async () => {
+    if (supabaseEnabled) await supabase.auth.signOut()
+    setBoards([]); setSelectedBoard(null); setCards([])
+    setCurrentUser(null); setConnectionStatus('auth')
   }
 
-  const updateOrder = async (id, patch) => {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, ...patch } : o))
-    if (!supabaseEnabled || !currentUser) return
-    await supabase.from('backorder_orders').update({
-      ...patch,
-      eta: patch.eta === '' ? null : patch.eta,
-      notes: patch.notes === '' ? null : patch.notes,
-    }).eq('id', id).eq('user_id', currentUser.id)
-  }
-
-  const deleteOrder = async (id) => {
-    setOrders(prev => prev.filter(o => o.id !== id))
-    if (!supabaseEnabled || !currentUser) return
-    await supabase.from('backorder_orders').delete().eq('id', id).eq('user_id', currentUser.id)
-  }
-
+  // ── Modal ──
   const openNew = (colId) => {
-    setEditingOrder(null)
-    setEditingDefaultCol(colId || 'intake')
+    setEditingCard(null)
+    setEditingDefaultCol(colId || 'todo')
     setModalOpen(true)
   }
 
-  const openEdit = (order) => {
-    setEditingOrder(order)
-    setModalOpen(true)
-  }
+  const openEdit = (card) => { setEditingCard(card); setModalOpen(true) }
 
   const handleModalSave = async (data) => {
-    if (editingOrder) await updateOrder(editingOrder.id, data)
-    else await createOrder(data)
+    if (editingCard) await updateCard(editingCard.id, data)
+    else await createCard(data)
     setModalOpen(false)
   }
 
   const handleModalDelete = async () => {
-    if (editingOrder) await deleteOrder(editingOrder.id)
+    if (editingCard) await deleteCard(editingCard.id)
     setModalOpen(false)
   }
 
-  const handleMove = async (orderId, toCol) => {
-    await updateOrder(orderId, { col: toCol })
-    if (toCol === 'shipped') fireConfetti()
+  const handleMove = async (cardId, toCol) => {
+    await updateCard(cardId, { col: toCol })
+    if (toCol === 'done') fireConfetti()
   }
 
   const handleDragStart = (id) => { dragIdRef.current = id }
 
-  const handleSignOut = async () => {
-    if (supabaseEnabled) await supabase.auth.signOut()
-    setOrders(DEMO_ORDERS)
-    setCurrentUser(null)
-    setConnectionStatus('auth')
-  }
-
   const handleDrop = async (toCol) => {
     if (!dragIdRef.current) return
-    const order = orders.find(o => o.id === dragIdRef.current)
-    if (order && order.col !== toCol) {
-      await updateOrder(order.id, { col: toCol })
-      if (toCol === 'shipped') fireConfetti()
+    const card = cards.find(c => c.id === dragIdRef.current)
+    if (card && card.col !== toCol) {
+      await updateCard(card.id, { col: toCol })
+      if (toCol === 'done') fireConfetti()
     }
     dragIdRef.current = null
   }
@@ -172,25 +213,37 @@ export default function App() {
     <>
       {supabaseEnabled && !currentUser && <AuthOverlay />}
       <Header
-        orders={orders}
+        selectedBoard={selectedBoard}
+        cards={cards}
         connectionStatus={connectionStatus}
         theme={theme}
         onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-        onNewOrder={() => openNew('intake')}
+        onNewCard={() => openNew('todo')}
+        onBack={() => { setSelectedBoard(null); setCards([]) }}
         onSignOut={handleSignOut}
+        onRenameBoard={renameBoard}
       />
-      <Board
-        columns={COLUMNS}
-        orders={orders}
-        onOpenNew={openNew}
-        onOpenEdit={openEdit}
-        onMove={handleMove}
-        onDragStart={handleDragStart}
-        onDrop={handleDrop}
-      />
+      {!selectedBoard ? (
+        <BoardList
+          boards={boards}
+          onSelect={selectBoard}
+          onCreate={createBoard}
+          onDelete={deleteBoard}
+        />
+      ) : (
+        <Board
+          columns={COLUMNS}
+          cards={cards}
+          onOpenNew={openNew}
+          onOpenEdit={openEdit}
+          onMove={handleMove}
+          onDragStart={handleDragStart}
+          onDrop={handleDrop}
+        />
+      )}
       {modalOpen && (
-        <OrderModal
-          order={editingOrder}
+        <CardModal
+          card={editingCard}
           onSave={handleModalSave}
           onDelete={handleModalDelete}
           onClose={() => setModalOpen(false)}

@@ -1,44 +1,44 @@
 import { useState } from 'react'
-import { Search, CheckCircle, PackageSearch, Truck, Plus, Inbox } from 'lucide-react'
+import { Circle, Zap, Eye, CheckCircle, Plus, Inbox } from 'lucide-react'
 import Card from './Card'
 
 const ICON_MAP = {
-  'search': Search,
+  'circle': Circle,
+  'zap': Zap,
+  'eye': Eye,
   'check-circle': CheckCircle,
-  'package-search': PackageSearch,
-  'truck': Truck,
 }
 
-export default function Column({ col, columns, orders, onOpenNew, onOpenEdit, onMove, onDragStart, onDrop }) {
+export default function Column({ col, columns, cards, onOpenNew, onOpenEdit, onMove, onDragStart, onDrop }) {
   const [dragOver, setDragOver] = useState(false)
-  const Icon = ICON_MAP[col.icon] || Search
+  const Icon = ICON_MAP[col.icon] || Circle
 
   return (
     <div className="column" data-col={col.id}>
       <div className="column-header">
         <div className="col-icon"><Icon size={14} /></div>
         <span className="col-title">{col.title}</span>
-        <span className="col-count">{orders.length}</span>
+        <span className="col-count">{cards.length}</span>
       </div>
-      <div className="col-step">{col.step} — {col.desc}</div>
+      <div className="col-step">{col.desc}</div>
       <div
         className={`cards-list${dragOver ? ' drag-over' : ''}`}
         onDragOver={e => { e.preventDefault(); setDragOver(true) }}
         onDragLeave={() => setDragOver(false)}
         onDrop={e => { e.preventDefault(); setDragOver(false); onDrop(col.id) }}
       >
-        {orders.length === 0 ? (
+        {cards.length === 0 ? (
           <div className="empty-state">
             <Inbox size={24} />
-            <p>No orders here</p>
+            <p>No cards here</p>
           </div>
         ) : (
-          orders.map(order => (
+          cards.map(card => (
             <Card
-              key={order.id}
-              order={order}
+              key={card.id}
+              card={card}
               columns={columns}
-              onEdit={() => onOpenEdit(order)}
+              onEdit={() => onOpenEdit(card)}
               onMove={onMove}
               onDragStart={onDragStart}
             />
@@ -46,7 +46,7 @@ export default function Column({ col, columns, orders, onOpenNew, onOpenEdit, on
         )}
       </div>
       <button className="add-card-btn" onClick={() => onOpenNew(col.id)}>
-        <Plus size={12} /> Add order
+        <Plus size={12} /> Add card
       </button>
     </div>
   )
