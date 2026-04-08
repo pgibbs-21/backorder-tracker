@@ -10,6 +10,18 @@ export default function AuthOverlay() {
 
   const clear = () => { setError(''); setStatus({ text: '', type: '' }) }
 
+  const handleForgotPassword = async () => {
+    if (!email) { setError('Enter your email first.'); return }
+    clear()
+    setBusy(true)
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    })
+    if (err) setError(err.message)
+    else setStatus({ text: 'Password reset email sent. Check your inbox.', type: 'success' })
+    setBusy(false)
+  }
+
   const handleSignIn = async (e) => {
     e.preventDefault()
     if (!email || !password) { setError('Enter email and password first.'); return }
@@ -56,6 +68,9 @@ return (
             required
           />
           <button type="submit" className="btn-save" disabled={busy}>Sign in</button>
+          <button type="button" className="auth-forgot" onClick={handleForgotPassword} disabled={busy}>
+            Forgot password?
+          </button>
           {error && <div className="auth-error">{error}</div>}
           {status.text && <div className={`auth-status ${status.type}`}>{status.text}</div>}
         </form>
