@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Moon, Sun, Plus, LogOut, ArrowLeft, Pencil, Check } from 'lucide-react'
 
-export default function Header({ selectedBoard, cards, connectionStatus, theme, onToggleTheme, onNewCard, onBack, onSignOut, onRenameBoard }) {
+export default function Header({ selectedBoard, cards, columns, connectionStatus, theme, onToggleTheme, onNewCard, onBack, onSignOut, onRenameBoard }) {
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
 
-  const active = cards.filter(c => c.col !== 'done').length
-  const done = cards.filter(c => c.col === 'done').length
+  const lastColId = columns[columns.length - 1]?.id
+  const done = cards.filter(c => c.column_id === lastColId).length
+  const active = cards.length - done
 
   const startRename = () => {
     setRenameValue(selectedBoard.name)
@@ -50,7 +51,7 @@ export default function Header({ selectedBoard, cards, connectionStatus, theme, 
         ) : (
           <>
             <LogoSvg />
-            <span className="logo-text">Backcountry</span>
+            <span className="logo-text">Backcountry Kanban Boards</span>
           </>
         )}
       </div>

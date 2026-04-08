@@ -270,6 +270,7 @@ export default function App() {
       <Header
         selectedBoard={selectedBoard}
         cards={cards}
+        columns={columns}
         connectionStatus={connectionStatus}
         theme={theme}
         onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
