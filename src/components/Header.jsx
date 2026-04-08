@@ -50,7 +50,7 @@ export default function Header({ selectedBoard, cards, connectionStatus, theme, 
         ) : (
           <>
             <LogoSvg />
-            <span className="logo-text">My<span>Boards</span></span>
+            <span className="logo-text">Backcountry</span>
           </>
         )}
       </div>
@@ -84,15 +84,5 @@ export default function Header({ selectedBoard, cards, connectionStatus, theme, 
 }
 
 function LogoSvg() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-label="My Boards logo">
-      <rect width="28" height="28" rx="7" fill="var(--color-primary)" />
-      <rect x="5" y="7" width="5" height="14" rx="2" fill="white" opacity="0.3" />
-      <rect x="5" y="12" width="5" height="9" rx="2" fill="white" />
-      <rect x="11.5" y="7" width="5" height="14" rx="2" fill="white" opacity="0.3" />
-      <rect x="11.5" y="9" width="5" height="12" rx="2" fill="white" />
-      <rect x="18" y="7" width="5" height="14" rx="2" fill="white" opacity="0.3" />
-      <rect x="18" y="16" width="5" height="5" rx="2" fill="white" />
-    </svg>
-  )
+  return <img src="/backcountry-goat.jpg" alt="Backcountry logo" className="brand-logo" />
 }

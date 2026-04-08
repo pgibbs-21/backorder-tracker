@@ -33,7 +33,7 @@ return (
       <div className="auth-card">
         <div className="logo" style={{ marginBottom: 'var(--space-4)' }}>
           <LogoSvg />
-          <span className="logo-text">Backorder<span>Track</span></span>
+          <span className="logo-text">Backcountry</span>
         </div>
         <h1 className="auth-title">Sign in</h1>
         <p className="auth-copy">This app is invite only. If you don't have access, contact the boss to get set up.</p>
@@ -66,15 +66,5 @@ return (
 }
 
 function LogoSvg() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-label="Backorder Tracker logo">
-      <rect width="28" height="28" rx="7" fill="var(--color-primary)" />
-      <rect x="5" y="7" width="5" height="14" rx="2" fill="white" opacity="0.3" />
-      <rect x="5" y="12" width="5" height="9" rx="2" fill="white" />
-      <rect x="11.5" y="7" width="5" height="14" rx="2" fill="white" opacity="0.3" />
-      <rect x="11.5" y="9" width="5" height="12" rx="2" fill="white" />
-      <rect x="18" y="7" width="5" height="14" rx="2" fill="white" opacity="0.3" />
-      <rect x="18" y="16" width="5" height="5" rx="2" fill="white" />
-    </svg>
-  )
+  return <img src="/backcountry-goat.jpg" alt="Backcountry logo" className="brand-logo-lg" />
 }

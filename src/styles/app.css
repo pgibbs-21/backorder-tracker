@@ -357,6 +357,20 @@ a, button, [role="button"], input, textarea, select {
 .empty-state svg { margin-bottom: var(--space-3); opacity: 0.4; }
 .empty-state p { font-size: var(--text-xs); }
 
+/* ── Brand logo image ── */
+.brand-logo {
+  height: 36px; width: auto; display: block;
+  transition: filter var(--transition-interactive);
+}
+.brand-logo-lg {
+  height: 56px; width: auto; display: block; margin-bottom: var(--space-2);
+  transition: filter var(--transition-interactive);
+}
+[data-theme="dark"] .brand-logo,
+[data-theme="dark"] .brand-logo-lg {
+  filter: invert(1);
+}
+
 /* ── Board rename input ── */
 .board-rename-input {
   font-size: var(--text-base); font-weight: 700; letter-spacing: -0.02em;
