@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase, supabaseEnabled } from './lib/supabase'
 import AuthOverlay from './components/AuthOverlay'
 import SetPassword from './components/SetPassword'
@@ -33,12 +33,12 @@ export default function App() {
   }, [theme])
 
   // ── Boards ──
-  const loadBoards = useCallback(async () => {
-    if (!supabaseEnabled || !currentUser) return
+  const loadBoards = async (userId) => {
+    if (!supabaseEnabled || !userId) return
     const { data, error } = await supabase
-      .from('boards').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: true })
+      .from('boards').select('*').eq('user_id', userId).order('created_at', { ascending: true })
     if (!error && data) setBoards(data)
-  }, [currentUser])
+  }
 
   const createBoard = async (name) => {
     if (!supabaseEnabled || !currentUser) {
@@ -72,8 +72,8 @@ export default function App() {
   }
 
   // ── Columns ──
-  const loadColumns = useCallback(async (boardId) => {
-    if (!supabaseEnabled || !currentUser) return
+  const loadColumns = async (boardId) => {
+    if (!supabaseEnabled || !boardId) return
     const { data, error } = await supabase
       .from('columns').select('*').eq('board_id', boardId).order('position', { ascending: true })
     if (!error && data) setColumns(data)
@@ -106,8 +106,8 @@ export default function App() {
   }
 
   // ── Cards ──
-  const loadCards = useCallback(async (boardId) => {
-    if (!supabaseEnabled || !currentUser) return
+  const loadCards = async (boardId) => {
+    if (!supabaseEnabled || !boardId) return
     const { data, error } = await supabase
       .from('cards').select('*').eq('board_id', boardId).order('created_at', { ascending: true })
     if (!error && data) {
@@ -119,8 +119,8 @@ export default function App() {
     }
   }, [currentUser])
 
-  const subscribeRealtime = useCallback((boardId) => {
-    if (!supabaseEnabled || !currentUser) return
+  const subscribeRealtime = (boardId) => {
+    if (!supabaseEnabled || !boardId) return
     if (realtimeRef.current) supabase.removeChannel(realtimeRef.current)
     realtimeRef.current = supabase
       .channel(`board-${boardId}`)
@@ -183,7 +183,7 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       const user = session?.user || null
       setCurrentUser(user)
-      if (user) { setConnectionStatus('live'); loadBoards() }
+      if (user) { setConnectionStatus('live'); loadBoards(user.id) }
       else setConnectionStatus('auth')
     })
 
@@ -197,7 +197,7 @@ export default function App() {
       }
       const user = session?.user || null
       setCurrentUser(user)
-      if (user) { setBoards([]); setConnectionStatus('live'); loadBoards() }
+      if (user) { setBoards([]); setConnectionStatus('live'); loadBoards(user.id) }
       else { setConnectionStatus('auth'); setBoards([]); setSelectedBoard(null); setColumns([]); setCards([]) }
     })
 
@@ -254,7 +254,12 @@ export default function App() {
     return (
       <SetPassword
         isInvite={passwordFlow === 'invite'}
-        onDone={() => { setPasswordFlow(null); setConnectionStatus('live'); loadBoards() }}
+        onDone={async () => {
+          setPasswordFlow(null)
+          setConnectionStatus('live')
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.user) loadBoards(session.user.id)
+        }}
       />
     )
   }
