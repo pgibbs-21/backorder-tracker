@@ -6,7 +6,14 @@ export default function Card({ card, columns, onEdit, onMove, onDragStart }) {
   const nextCol = colIdx < columns.length - 1 ? columns[colIdx + 1] : null
 
   return (
-    <div className="card" draggable onDragStart={() => onDragStart(card.id)}>
+    <div
+      className="card"
+      draggable
+      onDragStart={e => {
+        if (e.target.closest('.card-notes')) { e.preventDefault(); return }
+        onDragStart(card.id)
+      }}
+    >
       <div className="card-top">
         <div className="card-title">{card.title}</div>
         <button className="card-menu-btn" onClick={e => { e.stopPropagation(); onEdit() }} aria-label="Edit card">
