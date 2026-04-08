@@ -1,7 +1,7 @@
 import { Pencil, ArrowLeft, ArrowRight, Calendar } from 'lucide-react'
 
 export default function Card({ card, columns, onEdit, onMove, onDragStart }) {
-  const colIdx = columns.findIndex(c => c.id === card.col)
+  const colIdx = columns.findIndex(c => c.id === card.column_id)
   const prevCol = colIdx > 0 ? columns[colIdx - 1] : null
   const nextCol = colIdx < columns.length - 1 ? columns[colIdx + 1] : null
 
@@ -30,7 +30,7 @@ export default function Card({ card, columns, onEdit, onMove, onDragStart }) {
         )}
         {nextCol ? (
           <button className="btn-move btn-move-next" onClick={() => onMove(card.id, nextCol.id)}>
-            Move to {nextCol.title} <ArrowRight size={10} />
+            {nextCol.title} <ArrowRight size={10} />
           </button>
         ) : (
           <span style={{ flex: 1, textAlign: 'center', fontSize: 11, color: 'var(--color-success)', fontWeight: 600 }}>

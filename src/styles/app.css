@@ -163,11 +163,6 @@ a, button, [role="button"], input, textarea, select {
   display: flex; flex-direction: column;
   max-height: calc(100vh - 120px);
 }
-.column-header {
-  padding: var(--space-4) var(--space-4) var(--space-3);
-  display: flex; align-items: center; gap: var(--space-2);
-  border-bottom: 1px solid oklch(from var(--color-text) l c h / 0.07);
-}
 .col-icon {
   width: 28px; height: 28px; border-radius: var(--radius-md);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
@@ -184,16 +179,52 @@ a, button, [role="button"], input, textarea, select {
   padding: 0 var(--space-4) var(--space-2);
 }
 
-/* column accent variants */
-.column[data-col="todo"] .col-icon { background: var(--color-surface-offset-2); color: var(--color-text-muted); }
-.column[data-col="in_progress"] .col-icon { background: var(--color-blue-highlight); color: var(--color-blue); }
-.column[data-col="review"] .col-icon { background: var(--color-gold-highlight); color: var(--color-gold); }
-.column[data-col="done"] .col-icon { background: var(--color-success-highlight); color: var(--color-success); }
+/* ── Column header controls ── */
+.column-header {
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  display: flex; align-items: center; gap: var(--space-2);
+  border-bottom: 1px solid oklch(from var(--color-text) l c h / 0.07);
+}
+.col-title-area { flex: 1; display: flex; align-items: center; min-width: 0; }
+.col-actions {
+  display: flex; gap: 2px; opacity: 0;
+  transition: opacity var(--transition-interactive);
+}
+.column:hover .col-actions { opacity: 1; }
+.col-action-btn {
+  width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm); color: var(--color-text-faint);
+}
+.col-action-btn:hover { background: var(--color-surface-dynamic); color: var(--color-text-muted); }
+.col-action-delete:hover { background: #fee2e2; color: #991b1b; }
+[data-theme="dark"] .col-action-delete:hover { background: #4b1c1c; color: #fca5a5; }
+.col-rename-input {
+  flex: 1; font-size: var(--text-sm); font-weight: 700; letter-spacing: -0.01em;
+  background: var(--color-surface-offset); border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm); padding: 2px var(--space-2);
+  color: var(--color-text); font-family: var(--font-body);
+  box-shadow: 0 0 0 3px var(--color-primary-highlight);
+  width: 100%;
+}
+.col-rename-input:focus { outline: none; }
 
-.column[data-col="todo"] .col-count { background: var(--color-surface-offset-2); color: var(--color-text-muted); }
-.column[data-col="in_progress"] .col-count { background: var(--color-blue-highlight); color: var(--color-blue); }
-.column[data-col="review"] .col-count { background: var(--color-gold-highlight); color: var(--color-gold); }
-.column[data-col="done"] .col-count { background: var(--color-success-highlight); color: var(--color-success); }
+/* ── Add column button ── */
+.add-column-btn {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-xl); border: 2px dashed var(--color-border);
+  color: var(--color-text-faint); font-size: var(--text-sm); font-weight: 600;
+  white-space: nowrap; flex-shrink: 0; align-self: flex-start;
+  width: 200px; justify-content: center;
+  transition: border-color var(--transition-interactive), color var(--transition-interactive), background var(--transition-interactive);
+}
+.add-column-btn:hover {
+  border-color: var(--color-primary); color: var(--color-primary);
+  background: var(--color-primary-highlight);
+}
+.column-new {
+  width: 260px; flex-shrink: 0; align-self: flex-start;
+}
 
 .cards-list {
   padding: var(--space-3) var(--space-3);

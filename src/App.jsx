@@ -7,28 +7,24 @@ import BoardList from './components/BoardList'
 import Board from './components/Board'
 import CardModal from './components/CardModal'
 
-export const COLUMNS = [
-  { id: 'todo',        title: 'To Do',       icon: 'circle',       desc: 'Not started yet' },
-  { id: 'in_progress', title: 'In Progress',  icon: 'zap',          desc: 'Currently working on' },
-  { id: 'review',      title: 'Review',       icon: 'eye',          desc: 'Ready for review' },
-  { id: 'done',        title: 'Done',         icon: 'check-circle', desc: 'Completed' },
-]
-
 function uid() { return 'id_' + Math.random().toString(36).slice(2, 9) }
+
+const DEFAULT_COLUMNS = ['To Do', 'In Progress', 'Done']
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null)
   const [connectionStatus, setConnectionStatus] = useState('local')
   const [boards, setBoards] = useState([])
   const [selectedBoard, setSelectedBoard] = useState(null)
+  const [columns, setColumns] = useState([])
   const [cards, setCards] = useState([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editingCard, setEditingCard] = useState(null)
-  const [editingDefaultCol, setEditingDefaultCol] = useState('todo')
+  const [editingDefaultCol, setEditingDefaultCol] = useState(null)
   const [theme, setTheme] = useState(() =>
     matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   )
-  const [passwordFlow, setPasswordFlow] = useState(null) // 'invite' | 'recovery' | null
+  const [passwordFlow, setPasswordFlow] = useState(null)
   const realtimeRef = useRef(null)
   const dragIdRef = useRef(null)
 
@@ -40,31 +36,30 @@ export default function App() {
   const loadBoards = useCallback(async () => {
     if (!supabaseEnabled || !currentUser) return
     const { data, error } = await supabase
-      .from('boards')
-      .select('*')
-      .eq('user_id', currentUser.id)
-      .order('created_at', { ascending: true })
+      .from('boards').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: true })
     if (!error && data) setBoards(data)
   }, [currentUser])
 
   const createBoard = async (name) => {
     if (!supabaseEnabled || !currentUser) {
-      const board = { id: uid(), name, user_id: 'local', created_at: new Date().toISOString() }
+      const board = { id: uid(), name, created_at: new Date().toISOString() }
+      const cols = DEFAULT_COLUMNS.map((title, i) => ({ id: uid(), board_id: board.id, title, position: i }))
       setBoards(prev => [...prev, board])
-      return board
+      return { board, cols }
     }
-    const { data, error } = await supabase
-      .from('boards')
-      .insert({ name, user_id: currentUser.id })
-      .select()
-      .single()
-    if (!error && data) setBoards(prev => [...prev, data])
-    return data
+    const { data: board, error } = await supabase
+      .from('boards').insert({ name, user_id: currentUser.id }).select().single()
+    if (error || !board) return
+    await supabase.from('columns').insert(
+      DEFAULT_COLUMNS.map((title, i) => ({ board_id: board.id, title, position: i, user_id: currentUser.id }))
+    )
+    setBoards(prev => [...prev, board])
+    return board
   }
 
   const deleteBoard = async (id) => {
     setBoards(prev => prev.filter(b => b.id !== id))
-    if (selectedBoard?.id === id) { setSelectedBoard(null); setCards([]) }
+    if (selectedBoard?.id === id) { setSelectedBoard(null); setColumns([]); setCards([]) }
     if (!supabaseEnabled || !currentUser) return
     await supabase.from('boards').delete().eq('id', id).eq('user_id', currentUser.id)
   }
@@ -76,19 +71,50 @@ export default function App() {
     await supabase.from('boards').update({ name }).eq('id', id).eq('user_id', currentUser.id)
   }
 
+  // ── Columns ──
+  const loadColumns = useCallback(async (boardId) => {
+    if (!supabaseEnabled || !currentUser) return
+    const { data, error } = await supabase
+      .from('columns').select('*').eq('board_id', boardId).order('position', { ascending: true })
+    if (!error && data) setColumns(data)
+  }, [currentUser])
+
+  const addColumn = async (title) => {
+    const position = columns.length
+    if (!supabaseEnabled || !currentUser) {
+      setColumns(prev => [...prev, { id: uid(), board_id: selectedBoard.id, title, position }])
+      return
+    }
+    const { data, error } = await supabase
+      .from('columns')
+      .insert({ board_id: selectedBoard.id, title, position, user_id: currentUser.id })
+      .select().single()
+    if (!error && data) setColumns(prev => [...prev, data])
+  }
+
+  const updateColumn = async (id, patch) => {
+    setColumns(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c))
+    if (!supabaseEnabled || !currentUser) return
+    await supabase.from('columns').update(patch).eq('id', id).eq('user_id', currentUser.id)
+  }
+
+  const deleteColumn = async (id) => {
+    setColumns(prev => prev.filter(c => c.id !== id))
+    setCards(prev => prev.filter(c => c.column_id !== id))
+    if (!supabaseEnabled || !currentUser) return
+    await supabase.from('columns').delete().eq('id', id).eq('user_id', currentUser.id)
+  }
+
   // ── Cards ──
   const loadCards = useCallback(async (boardId) => {
     if (!supabaseEnabled || !currentUser) return
     const { data, error } = await supabase
-      .from('cards')
-      .select('*')
-      .eq('board_id', boardId)
-      .order('created_at', { ascending: true })
+      .from('cards').select('*').eq('board_id', boardId).order('created_at', { ascending: true })
     if (!error && data) {
       setCards(data.map(row => ({
-        id: row.id, col: row.col, title: row.title,
-        description: row.description || '', priority: row.priority,
-        due_date: row.due_date || '', board_id: row.board_id,
+        id: row.id, column_id: row.column_id, board_id: row.board_id,
+        title: row.title, description: row.description || '',
+        priority: row.priority, due_date: row.due_date || '',
       })))
     }
   }, [currentUser])
@@ -98,34 +124,40 @@ export default function App() {
     if (realtimeRef.current) supabase.removeChannel(realtimeRef.current)
     realtimeRef.current = supabase
       .channel(`board-${boardId}`)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'cards',
-        filter: `board_id=eq.${boardId}`,
-      }, () => loadCards(boardId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cards', filter: `board_id=eq.${boardId}` },
+        () => loadCards(boardId))
       .subscribe()
   }, [currentUser, loadCards])
 
   const selectBoard = (board) => {
     setSelectedBoard(board)
+    setColumns([])
     setCards([])
+    loadColumns(board.id)
     loadCards(board.id)
     subscribeRealtime(board.id)
   }
 
   const createCard = async (data) => {
+    const colId = editingDefaultCol || columns[0]?.id
+    if (!colId) return
     if (!supabaseEnabled || !currentUser) {
-      setCards(prev => [...prev, { id: uid(), col: editingDefaultCol, board_id: selectedBoard.id, ...data }])
+      setCards(prev => [...prev, { id: uid(), column_id: colId, board_id: selectedBoard.id, ...data }])
       return
     }
-    await supabase.from('cards').insert({
-      board_id: selectedBoard.id,
-      col: editingDefaultCol,
-      title: data.title,
-      description: data.description || null,
-      priority: data.priority,
-      due_date: data.due_date || null,
+    const { data: card, error } = await supabase.from('cards').insert({
+      board_id: selectedBoard.id, column_id: colId,
+      title: data.title, description: data.description || null,
+      priority: data.priority, due_date: data.due_date || null,
       user_id: currentUser.id,
-    })
+    }).select().single()
+    if (!error && card) {
+      setCards(prev => [...prev, {
+        id: card.id, column_id: card.column_id, board_id: card.board_id,
+        title: card.title, description: card.description || '',
+        priority: card.priority, due_date: card.due_date || '',
+      }])
+    }
   }
 
   const updateCard = async (id, patch) => {
@@ -157,20 +189,16 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
-        setPasswordFlow('recovery')
-        setCurrentUser(session?.user || null)
-        return
+        setPasswordFlow('recovery'); setCurrentUser(session?.user || null); return
       }
       if (event === 'SIGNED_IN' && window.location.hash.includes('type=invite')) {
-        setPasswordFlow('invite')
-        setCurrentUser(session?.user || null)
-        window.history.replaceState(null, '', window.location.pathname)
-        return
+        setPasswordFlow('invite'); setCurrentUser(session?.user || null)
+        window.history.replaceState(null, '', window.location.pathname); return
       }
       const user = session?.user || null
       setCurrentUser(user)
       if (user) { setBoards([]); setConnectionStatus('live'); loadBoards() }
-      else { setConnectionStatus('auth'); setBoards([]); setSelectedBoard(null); setCards([]) }
+      else { setConnectionStatus('auth'); setBoards([]); setSelectedBoard(null); setColumns([]); setCards([]) }
     })
 
     return () => {
@@ -181,14 +209,14 @@ export default function App() {
 
   const handleSignOut = async () => {
     if (supabaseEnabled) await supabase.auth.signOut()
-    setBoards([]); setSelectedBoard(null); setCards([])
+    setBoards([]); setSelectedBoard(null); setColumns([]); setCards([])
     setCurrentUser(null); setConnectionStatus('auth')
   }
 
   // ── Modal ──
-  const openNew = (colId) => {
+  const openNew = (columnId) => {
     setEditingCard(null)
-    setEditingDefaultCol(colId || 'todo')
+    setEditingDefaultCol(columnId || columns[0]?.id)
     setModalOpen(true)
   }
 
@@ -205,19 +233,19 @@ export default function App() {
     setModalOpen(false)
   }
 
-  const handleMove = async (cardId, toCol) => {
-    await updateCard(cardId, { col: toCol })
-    if (toCol === 'done') fireConfetti()
+  const handleMove = async (cardId, toColumnId) => {
+    await updateCard(cardId, { column_id: toColumnId })
+    if (columns[columns.length - 1]?.id === toColumnId) fireConfetti()
   }
 
   const handleDragStart = (id) => { dragIdRef.current = id }
 
-  const handleDrop = async (toCol) => {
+  const handleDrop = async (toColumnId) => {
     if (!dragIdRef.current) return
     const card = cards.find(c => c.id === dragIdRef.current)
-    if (card && card.col !== toCol) {
-      await updateCard(card.id, { col: toCol })
-      if (toCol === 'done') fireConfetti()
+    if (card && card.column_id !== toColumnId) {
+      await updateCard(card.id, { column_id: toColumnId })
+      if (columns[columns.length - 1]?.id === toColumnId) fireConfetti()
     }
     dragIdRef.current = null
   }
@@ -226,11 +254,7 @@ export default function App() {
     return (
       <SetPassword
         isInvite={passwordFlow === 'invite'}
-        onDone={() => {
-          setPasswordFlow(null)
-          setConnectionStatus('live')
-          loadBoards()
-        }}
+        onDone={() => { setPasswordFlow(null); setConnectionStatus('live'); loadBoards() }}
       />
     )
   }
@@ -244,27 +268,25 @@ export default function App() {
         connectionStatus={connectionStatus}
         theme={theme}
         onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-        onNewCard={() => openNew('todo')}
-        onBack={() => { setSelectedBoard(null); setCards([]) }}
+        onNewCard={() => openNew(columns[0]?.id)}
+        onBack={() => { setSelectedBoard(null); setColumns([]); setCards([]) }}
         onSignOut={handleSignOut}
         onRenameBoard={renameBoard}
       />
       {!selectedBoard ? (
-        <BoardList
-          boards={boards}
-          onSelect={selectBoard}
-          onCreate={createBoard}
-          onDelete={deleteBoard}
-        />
+        <BoardList boards={boards} onSelect={selectBoard} onCreate={createBoard} onDelete={deleteBoard} />
       ) : (
         <Board
-          columns={COLUMNS}
+          columns={columns}
           cards={cards}
           onOpenNew={openNew}
           onOpenEdit={openEdit}
           onMove={handleMove}
           onDragStart={handleDragStart}
           onDrop={handleDrop}
+          onAddColumn={addColumn}
+          onUpdateColumn={updateColumn}
+          onDeleteColumn={deleteColumn}
         />
       )}
       {modalOpen && (
