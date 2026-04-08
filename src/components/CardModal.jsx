@@ -21,7 +21,6 @@ export default function CardModal({ card, onSave, onDelete, onClose }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className="modal">
         <div className="modal-header">
