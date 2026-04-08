@@ -77,7 +77,7 @@ export default function App() {
     const { data, error } = await supabase
       .from('columns').select('*').eq('board_id', boardId).order('position', { ascending: true })
     if (!error && data) setColumns(data)
-  }, [currentUser])
+  }
 
   const addColumn = async (title) => {
     const position = columns.length
@@ -117,7 +117,7 @@ export default function App() {
         priority: row.priority, due_date: row.due_date || '',
       })))
     }
-  }, [currentUser])
+  }
 
   const subscribeRealtime = (boardId) => {
     if (!supabaseEnabled || !boardId) return
