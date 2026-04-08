@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { supabase, supabaseEnabled, BOARD_SLUG } from './lib/supabase'
+import { supabase, supabaseEnabled } from './lib/supabase'
 import AuthOverlay from './components/AuthOverlay'
 import Header from './components/Header'
 import Board from './components/Board'
@@ -45,7 +45,7 @@ export default function App() {
     const { data, error } = await supabase
       .from('backorder_orders')
       .select('*')
-      .eq('board_slug', BOARD_SLUG)
+      .eq('user_id', currentUser.id)
       .order('created_at', { ascending: true })
     if (!error && data) {
       setOrders(data.map(row => ({
@@ -62,7 +62,7 @@ export default function App() {
       .channel('board-orders')
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'backorder_orders',
-        filter: `board_slug=eq.${BOARD_SLUG}`,
+        filter: `user_id=eq.${currentUser.id}`,
       }, () => loadOrders())
       .subscribe()
   }, [currentUser, loadOrders])
@@ -96,7 +96,6 @@ export default function App() {
       return
     }
     await supabase.from('backorder_orders').insert({
-      board_slug: BOARD_SLUG,
       col: editingDefaultCol,
       customer: data.customer,
       item: data.item,
@@ -116,7 +115,7 @@ export default function App() {
       ...patch,
       eta: patch.eta === '' ? null : patch.eta,
       notes: patch.notes === '' ? null : patch.notes,
-    }).eq('id', id).eq('board_slug', BOARD_SLUG)
+    }).eq('id', id).eq('user_id', currentUser.id)
   }
 
   const deleteOrder = async (id) => {
@@ -124,7 +123,7 @@ export default function App() {
       setOrders(prev => prev.filter(o => o.id !== id))
       return
     }
-    await supabase.from('backorder_orders').delete().eq('id', id).eq('board_slug', BOARD_SLUG)
+    await supabase.from('backorder_orders').delete().eq('id', id).eq('user_id', currentUser.id)
   }
 
   const openNew = (colId) => {
@@ -156,6 +155,13 @@ export default function App() {
 
   const handleDragStart = (id) => { dragIdRef.current = id }
 
+  const handleSignOut = async () => {
+    if (supabaseEnabled) await supabase.auth.signOut()
+    setOrders(DEMO_ORDERS)
+    setCurrentUser(null)
+    setConnectionStatus('auth')
+  }
+
   const handleDrop = async (toCol) => {
     if (!dragIdRef.current) return
     const order = orders.find(o => o.id === dragIdRef.current)
@@ -175,6 +181,7 @@ export default function App() {
         theme={theme}
         onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
         onNewOrder={() => openNew('intake')}
+        onSignOut={handleSignOut}
       />
       <Board
         columns={COLUMNS}

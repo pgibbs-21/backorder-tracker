@@ -1,6 +1,6 @@
-import { Moon, Sun, Plus } from 'lucide-react'
+import { Moon, Sun, Plus, LogOut } from 'lucide-react'
 
-export default function Header({ orders, connectionStatus, theme, onToggleTheme, onNewOrder }) {
+export default function Header({ orders, connectionStatus, theme, onToggleTheme, onNewOrder, onSignOut }) {
   const active = orders.filter(o => o.col !== 'shipped').length
   const shipped = orders.filter(o => o.col === 'shipped').length
 
@@ -23,6 +23,11 @@ export default function Header({ orders, connectionStatus, theme, onToggleTheme,
         <button className="btn-icon" onClick={onToggleTheme} aria-label="Toggle dark mode">
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
+        {onSignOut && (
+          <button className="btn-icon" onClick={onSignOut} aria-label="Sign out">
+            <LogOut size={18} />
+          </button>
+        )}
       </div>
     </header>
   )
