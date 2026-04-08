@@ -127,7 +127,7 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cards', filter: `board_id=eq.${boardId}` },
         () => loadCards(boardId))
       .subscribe()
-  }, [currentUser, loadCards])
+  }
 
   const selectBoard = (board) => {
     setSelectedBoard(board)
