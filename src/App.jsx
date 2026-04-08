@@ -80,7 +80,7 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const user = session?.user || null
       setCurrentUser(user)
-      if (user) { setConnectionStatus('live'); subscribeRealtime(); loadOrders() }
+      if (user) { setOrders([]); setConnectionStatus('live'); subscribeRealtime(); loadOrders() }
       else setConnectionStatus('auth')
     })
 
@@ -107,10 +107,8 @@ export default function App() {
   }
 
   const updateOrder = async (id, patch) => {
-    if (!supabaseEnabled || !currentUser) {
-      setOrders(prev => prev.map(o => o.id === id ? { ...o, ...patch } : o))
-      return
-    }
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, ...patch } : o))
+    if (!supabaseEnabled || !currentUser) return
     await supabase.from('backorder_orders').update({
       ...patch,
       eta: patch.eta === '' ? null : patch.eta,
@@ -119,10 +117,8 @@ export default function App() {
   }
 
   const deleteOrder = async (id) => {
-    if (!supabaseEnabled || !currentUser) {
-      setOrders(prev => prev.filter(o => o.id !== id))
-      return
-    }
+    setOrders(prev => prev.filter(o => o.id !== id))
+    if (!supabaseEnabled || !currentUser) return
     await supabase.from('backorder_orders').delete().eq('id', id).eq('user_id', currentUser.id)
   }
 
