@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase, supabaseEnabled } from './lib/supabase'
 import AuthOverlay from './components/AuthOverlay'
+import SetPassword from './components/SetPassword'
 import Header from './components/Header'
 import BoardList from './components/BoardList'
 import Board from './components/Board'
@@ -27,6 +28,7 @@ export default function App() {
   const [theme, setTheme] = useState(() =>
     matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   )
+  const [passwordFlow, setPasswordFlow] = useState(null) // 'invite' | 'recovery' | null
   const realtimeRef = useRef(null)
   const dragIdRef = useRef(null)
 
@@ -153,7 +155,18 @@ export default function App() {
       else setConnectionStatus('auth')
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setPasswordFlow('recovery')
+        setCurrentUser(session?.user || null)
+        return
+      }
+      if (event === 'SIGNED_IN' && window.location.hash.includes('type=invite')) {
+        setPasswordFlow('invite')
+        setCurrentUser(session?.user || null)
+        window.history.replaceState(null, '', window.location.pathname)
+        return
+      }
       const user = session?.user || null
       setCurrentUser(user)
       if (user) { setBoards([]); setConnectionStatus('live'); loadBoards() }
@@ -207,6 +220,19 @@ export default function App() {
       if (toCol === 'done') fireConfetti()
     }
     dragIdRef.current = null
+  }
+
+  if (passwordFlow) {
+    return (
+      <SetPassword
+        isInvite={passwordFlow === 'invite'}
+        onDone={() => {
+          setPasswordFlow(null)
+          setConnectionStatus('live')
+          loadBoards()
+        }}
+      />
+    )
   }
 
   return (
