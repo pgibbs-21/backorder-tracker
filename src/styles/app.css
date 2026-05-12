@@ -251,6 +251,7 @@ a, button, [role="button"], input, textarea, select {
   cursor: grab; user-select: none;
   box-shadow: var(--shadow-sm);
   position: relative;
+  overflow-wrap: break-word; min-width: 0;
   transition: box-shadow var(--transition-interactive), transform var(--transition-interactive), border-color var(--transition-interactive);
 }
 .card:hover { box-shadow: var(--shadow-md); border-color: oklch(from var(--color-text) l c h / 0.14); }
