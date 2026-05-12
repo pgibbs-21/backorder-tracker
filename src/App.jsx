@@ -25,6 +25,7 @@ export default function App() {
     matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   )
   const [passwordFlow, setPasswordFlow] = useState(null)
+  const [boardDueCounts, setBoardDueCounts] = useState({})
   const realtimeRef = useRef(null)
   const dragIdRef = useRef(null)
 
@@ -37,7 +38,30 @@ export default function App() {
     if (!supabaseEnabled || !userId) return
     const { data, error } = await supabase
       .from('boards').select('*').eq('user_id', userId).order('created_at', { ascending: true })
-    if (!error && data) setBoards(data)
+    if (!error && data) { setBoards(data); loadDueCounts(userId) }
+  }
+
+  const loadDueCounts = async (userId) => {
+    if (!supabaseEnabled || !userId) return
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const fmt = d => new Date(today.getTime() + d * 86400000).toISOString().split('T')[0]
+    const { data, error } = await supabase
+      .from('cards')
+      .select('board_id, due_date')
+      .eq('user_id', userId)
+      .gte('due_date', fmt(0))
+      .lte('due_date', fmt(7))
+    if (error || !data) return
+    const counts = {}
+    data.forEach(({ board_id, due_date }) => {
+      if (!counts[board_id]) counts[board_id] = { d1: 0, d2: 0, d7: 0 }
+      const days = Math.round((new Date(due_date + 'T00:00:00') - today) / 86400000)
+      if (days <= 1) counts[board_id].d1++
+      else if (days === 2) counts[board_id].d2++
+      else counts[board_id].d7++
+    })
+    setBoardDueCounts(counts)
   }
 
   const createBoard = async (name) => {
@@ -275,12 +299,12 @@ export default function App() {
         theme={theme}
         onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
         onNewCard={() => openNew(columns[0]?.id)}
-        onBack={() => { setSelectedBoard(null); setColumns([]); setCards([]) }}
+        onBack={() => { setSelectedBoard(null); setColumns([]); setCards([]); loadDueCounts(currentUser?.id) }}
         onSignOut={handleSignOut}
         onRenameBoard={renameBoard}
       />
       {!selectedBoard ? (
-        <BoardList boards={boards} onSelect={selectBoard} onCreate={createBoard} onDelete={deleteBoard} />
+        <BoardList boards={boards} boardDueCounts={boardDueCounts} onSelect={selectBoard} onCreate={createBoard} onDelete={deleteBoard} />
       ) : (
         <Board
           columns={columns}

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, Trash2, LayoutDashboard } from 'lucide-react'
 
-export default function BoardList({ boards, onSelect, onCreate, onDelete }) {
+export default function BoardList({ boards, boardDueCounts = {}, onSelect, onCreate, onDelete }) {
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
 
@@ -47,24 +47,46 @@ export default function BoardList({ boards, onSelect, onCreate, onDelete }) {
         </div>
       ) : (
         <div className="board-grid">
-          {boards.map(board => (
-            <div key={board.id} className="board-card" onClick={() => onSelect(board)}>
-              <div className="board-card-icon">
-                <LayoutDashboard size={22} />
+          {boards.map(board => {
+            const dc = boardDueCounts[board.id]
+            return (
+              <div key={board.id} className="board-card" onClick={() => onSelect(board)}>
+                <div className="board-card-icon">
+                  <LayoutDashboard size={22} />
+                </div>
+                <div className="board-card-name">{board.name}</div>
+                <div className="board-card-date">
+                  {new Date(board.created_at).toLocaleDateString()}
+                </div>
+                {dc && (dc.d1 > 0 || dc.d2 > 0 || dc.d7 > 0) && (
+                  <div className="board-card-due-badges">
+                    {dc.d1 > 0 && (
+                      <span className="board-due-badge board-due-badge-1d" title={`${dc.d1} card${dc.d1 !== 1 ? 's' : ''} due within 1 day`}>
+                        {dc.d1}
+                      </span>
+                    )}
+                    {dc.d2 > 0 && (
+                      <span className="board-due-badge board-due-badge-2d" title={`${dc.d2} card${dc.d2 !== 1 ? 's' : ''} due in 2 days`}>
+                        {dc.d2}
+                      </span>
+                    )}
+                    {dc.d7 > 0 && (
+                      <span className="board-due-badge board-due-badge-7d" title={`${dc.d7} card${dc.d7 !== 1 ? 's' : ''} due in 3–7 days`}>
+                        {dc.d7}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <button
+                  className="board-card-delete"
+                  onClick={e => { e.stopPropagation(); onDelete(board.id) }}
+                  aria-label="Delete board"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
-              <div className="board-card-name">{board.name}</div>
-              <div className="board-card-date">
-                {new Date(board.created_at).toLocaleDateString()}
-              </div>
-              <button
-                className="board-card-delete"
-                onClick={e => { e.stopPropagation(); onDelete(board.id) }}
-                aria-label="Delete board"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </main>

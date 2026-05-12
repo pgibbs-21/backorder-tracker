@@ -451,6 +451,17 @@ a, button, [role="button"], input, textarea, select {
 .board-card:hover .board-card-delete { opacity: 1; }
 .board-card-delete:hover { background: #fee2e2; color: #991b1b; }
 [data-theme="dark"] .board-card-delete:hover { background: #4b1c1c; color: #fca5a5; }
+.board-card-due-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+.board-due-badge {
+  font-size: 11px; font-weight: 700; padding: 2px 7px;
+  border-radius: var(--radius-full); line-height: 1.5; white-space: nowrap;
+}
+.board-due-badge-1d { background: #fee2e2; color: #991b1b; }
+.board-due-badge-2d { background: #ffedd5; color: #c2410c; }
+.board-due-badge-7d { background: #fef9c3; color: #854d0e; }
+[data-theme="dark"] .board-due-badge-1d { background: #4b1c1c; color: #fca5a5; }
+[data-theme="dark"] .board-due-badge-2d { background: #431407; color: #fdba74; }
+[data-theme="dark"] .board-due-badge-7d { background: #422006; color: #fcd34d; }
 
 /* ── Confetti ── */
 @keyframes float-up {

@@ -55,8 +55,7 @@ export default function CardModal({ card, onSave, onDelete, onClose }) {
               <input
                 className="form-input"
                 id="f-due"
-                type="text"
-                placeholder="e.g. Apr 15 or ~2 weeks"
+                type="date"
                 value={dueDate}
                 onChange={e => setDueDate(e.target.value)}
               />
